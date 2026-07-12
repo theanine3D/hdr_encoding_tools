@@ -313,6 +313,26 @@ def select_only_vertices(mesh, vert_mask):
     mesh.update()
 
 
+def ensure_safe_vertex_paint_tool(context):
+    """Guard against a Blender tool-system crash on entering Vertex
+    Paint mode: if the workspace's saved Vertex Paint tool references a
+    brush_type no longer valid in this Blender version (e.g. a stale
+    'Blur' reference left over from an older Blender install), Blender's
+    automatic tool restoration throws an unhandled exception that it
+    prints to the console (the mode switch itself still succeeds -
+    Blender just swallows the error internally). Pointing the tool at
+    a known-good brush first avoids tripping over the bad reference.
+    Best-effort: if this Blender version's tool API differs, this
+    quietly does nothing and mode_set proceeds exactly as before."""
+    try:
+        tool = context.workspace.tools.from_space_view3d_mode(
+            'PAINT_VERTEX', create=True)
+        if tool is not None:
+            tool.idname = 'builtin_brush.Draw'
+    except Exception:
+        pass
+
+
 class HDRENC_props(PropertyGroup):
     source_path: StringProperty(
         name="Source Image",
@@ -760,6 +780,7 @@ class HDRENC_OT_smooth_vcol(Operator):
                 and any(o.type == 'MESH' for o in context.selected_objects))
 
     def execute(self, context):
+        ensure_safe_vertex_paint_tool(context)
         view_layer = context.view_layer
         prev_active = view_layer.objects.active
         smoothed = 0
