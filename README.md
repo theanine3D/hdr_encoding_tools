@@ -6,7 +6,7 @@ HDR Encoding Tools is a Blender 5.x addon that provides features for preparing b
 
 RGBM and dLDR encodings are used by game developers to reduce file size of lightmaps. RGBM can cut the file size of a HDR lightmap by at least half, and dLDR can cut it down even further (albeit with further lossiness.) You can read more about these encodings in [Unity's documentation](https://docs.unity3d.com/Manual/Lightmaps-TechnicalInformation.html).
 
-HDR vertex colors allow the use of HDR light with a significantly lower memory footprint. However, Unity normally will clamp vertex colors to the 0.0 - 1.0 range, discarding all values above 1.0.  This addon's Compress feature will divide all light valuess, which then allows their safe export to Unity where they can be re-multiplied back to their intended value via a shader.
+HDR vertex colors allow the use of HDR light with a significantly lower memory footprint. However, Unity normally will clamp vertex colors to the 0.0 - 1.0 range, discarding all values above 1.0.  This addon's Compress feature will divide all light values by a specific compression factor, which then allows their safe export to Unity where they can be re-multiplied back to their intended value via a shader.
 
 Finding this addon useful? Please consider starring it ⭐, or [donating](https://ko-fi.com/theanine3d) 🙂<br>
 
