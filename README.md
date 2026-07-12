@@ -15,6 +15,8 @@ Finding this addon useful? Please consider starring it ⭐, or [donating](https:
 2. Open Blender Preferences and click on the "Addons" tab
 3. Click on the "install" button and select your newly downloaded ZIP
 
+---
+
 ## How to Use (Image-based)
 For .HDR and .EXR image encoding:
 - Go into the UV/Image Editor and open the right sidebar (ie. press N)
@@ -46,6 +48,8 @@ Transparency** unchecked — alpha is a multiplier, not coverage), then:
 - **dLDR**: `pow(RGB × 2, 2.2)`
 
 In a gamma-space project, drop the `pow` and just multiply.
+
+---
 
 ## How to Use (Color-based)
 
