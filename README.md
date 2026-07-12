@@ -89,6 +89,13 @@ vertex colors.
   domains; alpha is never touched. Vertices in a fully dark
   disconnected island (no bright vertex to reach) are left as-is and
   counted in the report.
+- **Find Buried Islands** — selects the geometry that Fix Buried
+  Vertices can't repair: whole islands where every vertex is at or
+  below the Darkness Threshold, so there's no brighter vertex to copy a
+  color from. After marking the islands as selected, it switches to
+  Edit Mode automatically so they're immediately highlighted, ready to
+  be dealt with manually (moved above ground and re-baked, deleted, or
+  painted by hand).
 - **Smooth Vertex Colors** — runs Blender's built-in Smooth Vertex
   Colors feature (from Vertex Color Paint mode) in batch mode on every
   selected mesh in one click.
