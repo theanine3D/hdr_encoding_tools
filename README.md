@@ -78,12 +78,12 @@ HDR Encoding Tools also has some cleanup features for light that was baked to
 vertex colors. 
 
 - **Fix Buried Vertices** — repairs "shadow bleed": if vertices in a mesh
-- are buried even slightly inside other geometry, the light value there bakes
-  to black or near-black, and interpolation then smears that darkness up
-  the sides of the mesh. This button fixes that by copying the nearest
-  non-black color to those vertices that were completely buried.
+   are buried even slightly inside other geometry, the light value there bakes
+   to black or near-black, and interpolation then smears that darkness up
+   the sides of the mesh. This button fixes that by copying the nearest
+   non-black color to those vertices that were completely buried.
 - **Find Buried Islands** — finds and highlights geometry islands that are
-- completely buried - and as a result, completely darkened by shadows
+   completely buried - and as a result, completely darkened by shadows
 - **Smooth Vertex Colors** — runs Blender's built-in Smooth Vertex
   Colors feature (from Vertex Color Paint mode) in batch mode on every
   selected mesh in one click.
