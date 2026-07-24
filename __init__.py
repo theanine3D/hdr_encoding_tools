@@ -14,7 +14,7 @@ from collections import deque
 import bpy
 import numpy as np
 from bpy.props import (BoolProperty, EnumProperty, FloatProperty,
-                       PointerProperty, StringProperty)
+                       FloatVectorProperty, PointerProperty, StringProperty)
 from bpy.types import Operator, Panel, PropertyGroup
 from bpy_extras.io_utils import ImportHelper
 
@@ -528,6 +528,133 @@ def smooth_color_attribute(mesh, attr):
     return True
 
 
+# Custom-property keys stashed on a Principled BSDF node while it is
+# "prepped" for baking, so Restore can put the graph back exactly.
+_PREP_KEYS = ("hdrenc_prep",
+              "hdrenc_bc_default", "hdrenc_bc_linked",
+              "hdrenc_bc_from_node", "hdrenc_bc_from_sock",
+              "hdrenc_a_default", "hdrenc_a_linked",
+              "hdrenc_a_from_node", "hdrenc_a_from_sock")
+
+
+def unique_node_materials_of_selected(context):
+    """Yield each unique node-based material used by a selected mesh
+    object, once - so a material shared across many objects is only
+    processed a single time."""
+    seen = set()
+    for obj in context.selected_objects:
+        if obj.type != 'MESH':
+            continue
+        for slot in obj.material_slots:
+            mat = slot.material
+            if (mat is None or mat.library is not None
+                    or not mat.use_nodes or mat.node_tree is None):
+                continue
+            if mat.name in seen:
+                continue
+            seen.add(mat.name)
+            yield mat
+
+
+def principled_is_transparent(node):
+    """True if a Principled BSDF's Alpha input is driven by a link or
+    set below 1.0 (i.e. the material is actually see-through)."""
+    alpha = node.inputs.get("Alpha")
+    if alpha is None:
+        return False
+    if alpha.is_linked:
+        return True
+    try:
+        return alpha.default_value < 1.0
+    except TypeError:
+        return False
+
+
+def _clear_prep_props(node):
+    for key in _PREP_KEYS:
+        if key in node:
+            del node[key]
+
+
+def _reconnect_input(node_tree, socket, from_node_name, from_sock_id):
+    """Recreate a link into socket from the stored source endpoint."""
+    if not from_node_name:
+        return
+    from_node = node_tree.nodes.get(from_node_name)
+    if from_node is None:
+        return
+    for out in from_node.outputs:
+        if out.identifier == from_sock_id:
+            node_tree.links.new(out, socket)
+            return
+
+
+def prep_principled_for_bake(node_tree, node, base_color):
+    """Stash the Base Color / Alpha inputs' original state on the node,
+    then disconnect them and set opaque solid values (base_color for the
+    color, 1.0 for alpha) so light bakes without transparency producing
+    black vertex colors. A node already prepped is left untouched."""
+    if node.get("hdrenc_prep"):
+        return
+    node["hdrenc_prep"] = 1
+
+    bc = node.inputs.get("Base Color")
+    if bc is not None:
+        orig = [float(v) for v in bc.default_value]
+        node["hdrenc_bc_default"] = orig
+        if bc.is_linked:
+            link = bc.links[0]
+            node["hdrenc_bc_from_node"] = link.from_node.name
+            node["hdrenc_bc_from_sock"] = link.from_socket.identifier
+            node["hdrenc_bc_linked"] = 1
+            node_tree.links.remove(link)
+        else:
+            node["hdrenc_bc_linked"] = 0
+        alpha_chan = orig[3] if len(orig) > 3 else 1.0
+        bc.default_value = (base_color[0], base_color[1], base_color[2],
+                            alpha_chan)
+
+    alpha = node.inputs.get("Alpha")
+    if alpha is not None:
+        node["hdrenc_a_default"] = float(alpha.default_value)
+        if alpha.is_linked:
+            link = alpha.links[0]
+            node["hdrenc_a_from_node"] = link.from_node.name
+            node["hdrenc_a_from_sock"] = link.from_socket.identifier
+            node["hdrenc_a_linked"] = 1
+            node_tree.links.remove(link)
+        else:
+            node["hdrenc_a_linked"] = 0
+        alpha.default_value = 1.0
+
+
+def restore_principled_after_bake(node_tree, node):
+    """Undo prep_principled_for_bake: restore original default values and
+    reconnect whatever links were removed. Returns True if the node was
+    prepped (and is now restored)."""
+    if not node.get("hdrenc_prep"):
+        return False
+
+    bc = node.inputs.get("Base Color")
+    if bc is not None and "hdrenc_bc_default" in node:
+        bc.default_value = [float(v) for v in node["hdrenc_bc_default"]]
+        if node.get("hdrenc_bc_linked"):
+            _reconnect_input(node_tree, bc,
+                             node.get("hdrenc_bc_from_node"),
+                             node.get("hdrenc_bc_from_sock"))
+
+    alpha = node.inputs.get("Alpha")
+    if alpha is not None and "hdrenc_a_default" in node:
+        alpha.default_value = float(node["hdrenc_a_default"])
+        if node.get("hdrenc_a_linked"):
+            _reconnect_input(node_tree, alpha,
+                             node.get("hdrenc_a_from_node"),
+                             node.get("hdrenc_a_from_sock"))
+
+    _clear_prep_props(node)
+    return True
+
+
 class HDRENC_props(PropertyGroup):
     source_path: StringProperty(
         name="Source Image",
@@ -590,6 +717,18 @@ class HDRENC_props(PropertyGroup):
                     "to sample nearby (unburied) faces and copy their color"
                     "to the completley buried islands",
         default=False,
+    )
+    bake_color: FloatVectorProperty(
+        name="Bake Color",
+        description="The solid Base Color that transparent materials are "
+                    "temporarily set to while baking, so their albedo does "
+                    "not bleed dark into the vertex colors (green suits "
+                    "foliage)",
+        subtype='COLOR',
+        size=3,
+        min=0.0,
+        max=1.0,
+        default=(0.0, 0.5, 0.0),
     )
 
 
@@ -1030,6 +1169,77 @@ class HDRENC_OT_smooth_vcol(Operator):
         return {'FINISHED'}
 
 
+class HDRENC_OT_bake_prep_transparency(Operator):
+    """Temporarily unplug the Base Color and Alpha inputs of the Principled BSDF on every transparent material of the selected meshes, setting them to an opaque solid color so light bakes cleanly (transparency otherwise bakes to black vertex colors). Reconnect afterward with Restore Connections"""
+    bl_idname = "hdrenc.bake_prep_transparency"
+    bl_label = "Unplug for Bake"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        return any(o.type == 'MESH' for o in context.selected_objects)
+
+    def execute(self, context):
+        base_color = tuple(context.scene.hdr_encode.bake_color)
+        prepped = 0
+        for mat in unique_node_materials_of_selected(context):
+            node_tree = mat.node_tree
+            did = False
+            for node in node_tree.nodes:
+                if node.type != 'BSDF_PRINCIPLED':
+                    continue
+                if node.get("hdrenc_prep"):
+                    continue
+                if not principled_is_transparent(node):
+                    continue
+                prep_principled_for_bake(node_tree, node, base_color)
+                did = True
+            if did:
+                prepped += 1
+
+        if prepped == 0:
+            self.report({'WARNING'},
+                        "No transparent Principled materials found on "
+                        "the selection")
+            return {'CANCELLED'}
+        self.report({'INFO'},
+                    "Unplugged %d transparent material(s) for baking. "
+                    "Bake now, then press Restore Connections" % prepped)
+        return {'FINISHED'}
+
+
+class HDRENC_OT_bake_restore_transparency(Operator):
+    """Reconnect the Base Color and Alpha inputs that Unplug for Bake disconnected, restoring the original albedo and transparency on the selected meshes' materials"""
+    bl_idname = "hdrenc.bake_restore_transparency"
+    bl_label = "Restore Connections"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        return any(o.type == 'MESH' for o in context.selected_objects)
+
+    def execute(self, context):
+        restored = 0
+        for mat in unique_node_materials_of_selected(context):
+            node_tree = mat.node_tree
+            did = False
+            for node in node_tree.nodes:
+                if node.type != 'BSDF_PRINCIPLED':
+                    continue
+                if restore_principled_after_bake(node_tree, node):
+                    did = True
+            if did:
+                restored += 1
+
+        if restored == 0:
+            self.report({'WARNING'},
+                        "No unplugged materials found on the selection")
+            return {'CANCELLED'}
+        self.report({'INFO'},
+                    "Restored connections on %d material(s)" % restored)
+        return {'FINISHED'}
+
+
 class HDRENC_PT_panel(Panel):
     bl_idname = "HDRENC_PT_panel"
     bl_space_type = 'IMAGE_EDITOR'
@@ -1084,6 +1294,16 @@ class HDRENC_PT_vertex_colors(Panel):
 
         layout.operator(HDRENC_OT_create_vcol.bl_idname, icon='ADD')
 
+        layout.separator()
+        tcol = layout.column(align=True)
+        tcol.label(text="Transparency:")
+        tcol.prop(props, "bake_color", text="Bake Color")
+        tcol.operator(HDRENC_OT_bake_prep_transparency.bl_idname,
+                      icon='UNLINKED')
+        tcol.operator(HDRENC_OT_bake_restore_transparency.bl_idname,
+                      icon='LINKED')
+
+        layout.separator()
         col = layout.column(align=True)
         col.operator(HDRENC_OT_compress_vcol.bl_idname,
                      icon='FULLSCREEN_EXIT')
@@ -1119,6 +1339,8 @@ classes = (
     HDRENC_OT_find_buried_islands,
     HDRENC_OT_fix_buried_vcol,
     HDRENC_OT_smooth_vcol,
+    HDRENC_OT_bake_prep_transparency,
+    HDRENC_OT_bake_restore_transparency,
     HDRENC_PT_panel,
     HDRENC_PT_batch,
     HDRENC_PT_vertex_colors,
