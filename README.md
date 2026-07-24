@@ -84,6 +84,7 @@ vertex colors.
    non-black color to those vertices that were completely buried.
 - **Find Buried Islands** — finds and highlights geometry islands that are
    completely buried - and as a result, completely darkened by shadows
-- **Smooth Vertex Colors** — runs Blender's built-in Smooth Vertex
-  Colors feature (from Vertex Color Paint mode) in batch mode on every
-  selected mesh in one click.
+- **Smooth Vertex Colors** — blurs the active color attribute of every
+  selected mesh in one click, averaging each vertex's color with its
+  connected neighbours. Press it repeatedly for a stronger smoothing effect.
+  Handy after Fix Buried Vertices to blend the repaired areas in.
