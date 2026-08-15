@@ -63,7 +63,7 @@ Typical workflow:
 1. Open the "HDR Encoding Tools" panel in the 3D Viewport's righthand sidebar (press N).
 2. In the 3D Viewport, select the meshes to bake light for
 3. Press the "Create Vertex Color Layer" button in the addon's sidebar panel.
-4. Set your Bake target (in the "Render Properties" panel) to "Active Vertex Color" (under Bake -> Output)
+4. Set your Bake target (in the "Render Properties" panel) to "Active Vertex Color" (under Bake -> Output). Also set Bake Type to "Diffuse", and Influence to "Direct" + "Indirect" (leave "Color" disabled).
 5. If your meshes have any transparency, press the "Unplug for Bake" button in the HDR Encoding Tools sidebar panel in the 3D Viewport.
 6. Press Blender's built-in "Bake" button and wait for the bake to complete.
 7. If you had previously pressed the "Unplug for Bake" button, press the "Restore Connections" button
