@@ -125,13 +125,6 @@ def scale_color_attribute(attr, factor):
 
 
 def convert_color_attribute_type(context, obj, data_type):
-    """Convert every color attribute on obj's mesh to Face Corner domain
-    and the given data type. Domain is always forced to Face Corner
-    (Unity's FBX import expects it); only the data type toggles between
-    compress and decompress. The mesh's active color slot is preserved
-    (the convert operator works on the active slot, so the loop has to
-    cycle it - by name, since conversion recreates the attributes).
-    Returns the number of layers now in that format."""
     mesh = obj.data
     names = [a.name for a in mesh.color_attributes]
     prev_active_attr = mesh.color_attributes.active_color
@@ -164,14 +157,6 @@ def convert_color_attribute_type(context, obj, data_type):
 
 
 def burial_state(mesh, attr, threshold):
-    """Classify every vertex of a color attribute by burial state.
-
-    Returns (buf, rgba, loop_v, source, target, vert_color), or None if
-    the mesh or attribute has no data. source marks vertices with at
-    least one corner brighter than the threshold (vert_color holds their
-    representative color); target marks buried vertices, whose color
-    data is entirely at or below the threshold. loop_v is None for
-    Vertex-domain attributes."""
     count = len(attr.data)
     n_verts = len(mesh.vertices)
     if count == 0 or n_verts == 0:
@@ -219,12 +204,6 @@ def vertex_adjacency(mesh):
 
 
 def fix_buried_vertices(mesh, attr, threshold):
-    """Replace the color of every buried vertex — one whose RGB channels
-    are all at or below the darkness threshold — with the color of the
-    nearest connected non-buried vertex (breadth-first over mesh edges,
-    so a whole dark patch is filled from its border inward).
-    Works on both Vertex and Face Corner domains; alpha is untouched.
-    Returns (fixed, unreachable) vertex counts."""
     state = burial_state(mesh, attr, threshold)
     if state is None:
         return 0, 0
@@ -321,16 +300,6 @@ def mesh_islands(mesh, adj):
 
 def sample_buried_islands_from_other_islands(mesh, attr, threshold,
                                               min_similarity):
-    """For every face on a fully buried geometry island (a connected
-    component with zero vertices above the darkness threshold, so
-    fix_buried_vertices has no brighter vertex in it to copy from), find
-    the nearest face - by face-center distance - on a different,
-    non-buried island whose normal points in a similar direction
-    (cosine similarity >= min_similarity), and copy that donor face's
-    averaged corner color onto every vertex/corner of the buried face.
-    A buried face with no donor above the similarity threshold anywhere
-    in the mesh is left unchanged. Returns the number of vertices whose
-    color was set this way."""
     n_verts = len(mesh.vertices)
     n_polys = len(mesh.polygons)
     if n_verts == 0 or n_polys == 0:
@@ -466,16 +435,6 @@ def select_only_vertices(mesh, vert_mask):
 
 
 def smooth_color_attribute(mesh, attr):
-    """One pass of neighbour-averaging (Laplacian) smoothing on a color
-    attribute: each vertex's RGB becomes the mean of its own color and
-    the colors of its edge-connected neighbours. Alpha is untouched.
-    Works on both Vertex and Face Corner domains - corner colors are
-    reduced to one color per vertex, smoothed, then written back to
-    every corner of that vertex, matching the built-in Smooth Vertex
-    Colors for the continuous per-vertex colors this is used on. Runs
-    entirely on mesh data with no mode switch (so it never depends on
-    Vertex Paint mode being initialised). Returns True if colors were
-    written."""
     count = len(attr.data)
     n_verts = len(mesh.vertices)
     if count == 0 or n_verts == 0:
@@ -500,9 +459,6 @@ def smooth_color_attribute(mesh, attr):
         vcol = rgba[:, :3].astype(np.float64)
         has = np.ones(n_verts, dtype=bool)
 
-    # Neighbour sums over edges, each vertex seeded with its own color.
-    # A neighbour only contributes if it actually carries color data, so
-    # loose/colorless vertices can't pull a color toward black.
     nsum = np.where(has[:, None], vcol, 0.0)
     ncnt = has.astype(np.int64)
     edge_v = np.empty(len(mesh.edges) * 2, dtype=np.int64)
@@ -590,10 +546,6 @@ def _reconnect_input(node_tree, socket, from_node_name, from_sock_id):
 
 
 def prep_principled_for_bake(node_tree, node, base_color):
-    """Stash the Base Color / Alpha inputs' original state on the node,
-    then disconnect them and set opaque solid values (base_color for the
-    color, 1.0 for alpha) so light bakes without transparency producing
-    black vertex colors. A node already prepped is left untouched."""
     if node.get("hdrenc_prep"):
         return
     node["hdrenc_prep"] = 1
