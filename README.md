@@ -59,19 +59,19 @@ clamps vertex colors to [0, 1] on FBX import, so HDR values must be
 compressed into range first.
 
 Typical workflow:
-
-1.  Open the "HDR Encoding" tab on the righthand sidebar of the 3D Viewport.
-2. Select your meshes, press **Create Vertex Color Layer**
-3. Bake lighting to the color attribute (Cycles: Bake target →
-   Active Color Attribute)
-4. Press **Compress HDR Vertex Color**
-5. Export FBX (Geometry → Vertex Colors enabled)
-6. In your Unity or Unreal shader, multiply the vertex color by the same factor
-   to restore the HDR intensity
-
+1. Select meshes to bake light for
+2. Press "Create Vertex Color Layer"
+3. Set your Bake target (in the "Render Properties" panel) to "Active Vertex Color" (under Bake -> Output)
+5. If your meshes have any transparency, press the "Unplug for Bake" button in the HDR Encoding Tools sidebar panel in the 3D Viewport.
+6. Press Blender's built-in "Bake" button and wait for the bake to complete.
+7. If you had previously pressed the "Unplug for Bake" button, press the "Restore Connections" button
+8. General cleanup step: press the "Fix Buried Vertices" button, followed optionally by the "Smooth Vertex Colors" button
+9. Press the "Compress HDR Vertex Color" button. You will notice the vertex colors become darker after doing this - this is normal.
+10. Export your mesh as FBX. Make sure that you set the "Vertex Colors" setting to "Linear" in your FBX export settings.
+    
 Keep the compressed values if you plan to re-export; use **Decompress
 and Restore HDR** when you want to preview or re-bake the true HDR
-values in Blender. Alpha is never scaled — only RGB.
+values in Blender.
 
 ### Transparency
 
