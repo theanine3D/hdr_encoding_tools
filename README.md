@@ -19,7 +19,8 @@ Finding this addon useful? Please consider starring it ⭐, or [donating](https:
 ---
 
 ## How to Use (Image-based)
-For .HDR and .EXR image encoding:
+First follow Blender's usual steps for baking light to an HDR image format (.hdr / .exr). Once you've saved your HDR lightmap file, follow these steps:
+
 - Go into the UV/Image Editor and open the right sidebar (ie. press N)
 - Click on the "HDR Encoder" tab. Choose your .EXR or .HDR image
 - Press "Generate PNG"
