@@ -5,7 +5,7 @@ bl_info = {
     "blender": (5, 0, 0),
     "location": "UV/Image Editor > Sidebar (N) > HDR Encoding (image tools); 3D Viewport > Sidebar (N) > HDR Encoding (vertex color tools)",
     "description": "Tools for encoding / compressing HDR images and vertex colors, for use in game engines",
-    "category": "UV",
+    "category": "Bake",
 }
 
 import os
