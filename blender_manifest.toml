@@ -10,7 +10,7 @@ type = "add-on"
 
 website = "https://github.com/theanine3D/hdr_encoding_tools"
 
-tags = ["UV", "Material"]
+tags = ["UV", "Material", "Bake"]
 
 blender_version_min = "5.0.0"
 
