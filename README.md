@@ -90,11 +90,11 @@ material temporarily opaque for the bake:
 - **Unplug for Bake** — on every *transparent* material of the selected
   meshes (Principled BSDF with a linked or below-1.0 Alpha), disconnects
   the Base Color and Alpha inputs and sets them to the Bake Color and
-  fully opaque. Fully opaque materials are left alone. Bake your lighting
-  now.
+  fully opaque. Fully opaque materials are left alone. Bake your light after pressing this button.
 - **Restore Connections** — reconnects the Base Color and Alpha inputs
   exactly as they were, restoring the original albedo and transparency.
-
+  Press this button **after** baking your light.
+  
 The original links and values are stored on the material nodes
 themselves, so Restore works reliably even after saving and reopening the
 file. Shared materials are handled once. Only Principled BSDF Alpha is
