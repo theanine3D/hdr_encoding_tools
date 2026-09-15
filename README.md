@@ -12,6 +12,9 @@ HDR vertex colors have a significantly lower memory footprint than HDR images. H
 Finding this addon useful? Please consider starring it ⭐, or [donating](https://ko-fi.com/theanine3d) 🙂<br>
 
 ## Installation
+The best way to install the addon is via the official [Blender Extensions platform](https://extensions.blender.org/add-ons/hdr-encoding-tools/). Simply open your Blender preferences, click on the "Get Extensions" tab on the left, and search for "HDR Encoding" to find and install the addon.
+
+However, if you prefer, you can also install the addon manually:
 1. Press the big green Code button above and choose "Download ZIP"
 2. Open Blender Preferences and click on the "Addons" tab
 3. Click on the "install" button and select your newly downloaded ZIP
